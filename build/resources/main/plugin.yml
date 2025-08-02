@@ -1,0 +1,6 @@
+name: VillagerTitles
+version: 1.0-SNAPSHOT
+main: com.example.villagertitles.VillagerTitlesPlugin
+api-version: '1.21'
+description: "村人の頭上に職業名を常時表示するプラグイン"
+load: POSTWORLD           # ワールド生成後に村人をスキャン     # ワールド生成後に村人をスキャン
