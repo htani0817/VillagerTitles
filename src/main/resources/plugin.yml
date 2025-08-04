@@ -4,3 +4,13 @@ main: com.example.villagertitles.VillagerTitlesPlugin
 api-version: '1.21'
 description: "村人の頭上に職業名を常時表示するプラグイン"
 load: POSTWORLD           # ワールド生成後に村人をスキャン     # ワールド生成後に村人をスキャン
+
+commands:
+  vtreload:
+    description: "全村人の職業名を再適用する"
+    usage: /<command>
+    permission: villagertitles.reload
+permissions:
+  villagertitles.reload:
+    description: "村人職業表示のリロード権限"
+    default: op

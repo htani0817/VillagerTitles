@@ -1,47 +1,73 @@
 package com.example.villagertitles
 
-import org.bukkit.event.entity.VillagerCareerChangeEvent
-import org.bukkit.event.entity.CreatureSpawnEvent
+import net.kyori.adventure.text.Component
+import net.kyori.adventure.text.format.NamedTextColor
+import org.bukkit.command.Command
+import org.bukkit.command.CommandSender
 import org.bukkit.entity.Villager
 import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
+import org.bukkit.event.entity.CreatureSpawnEvent
+import org.bukkit.event.entity.VillagerCareerChangeEvent
+import org.bukkit.event.world.ChunkLoadEvent
 import org.bukkit.plugin.java.JavaPlugin
-import net.kyori.adventure.text.Component
-import net.kyori.adventure.text.format.NamedTextColor
 
 class VillagerTitlesPlugin : JavaPlugin(), Listener {
 
     override fun onEnable() {
-        // 既存の村人も起動時に更新
+        // イベントリスナー登録
         server.pluginManager.registerEvents(this, this)
-        server.worlds.forEach { w ->
-            w.entities.filterIsInstance<Villager>().forEach { it.updateTitle() }
+
+        // /vtreload を登録（plugin.yml にも要記述）
+        getCommand("vtreload")?.setExecutor { sender, _, _, _ ->
+            sender.sendMessage(Component.text("VillagerTitles ➤ 全村人の職業名を再反映中…", NamedTextColor.YELLOW))
+            rescanAllVillagers()
+            sender.sendMessage(Component.text("VillagerTitles ➤ 全村人を再走査し完了しました。", NamedTextColor.GREEN))
+            true
+        }
+
+        // 起動時に既存の村人に反映
+        rescanAllVillagers()
+    }
+
+    @EventHandler
+    fun onChunkLoad(e: ChunkLoadEvent) {
+        // newly作成されてない既存チャンクにいる村人にタイトルを付ける
+        if (!e.isNewChunk) {
+            e.chunk.entities
+                .filterIsInstance<Villager>()
+                .forEach { it.updateTitle() }
         }
     }
 
-    /** 自然・繁殖・スポーンエッグすべてここに来る */
     @EventHandler
     fun onVillagerSpawn(e: CreatureSpawnEvent) {
         (e.entity as? Villager)?.updateTitle()
     }
 
-    /** 職業ブロックが変わった直後 */
     @EventHandler
     fun onCareerChange(e: VillagerCareerChangeEvent) {
-        // 1 tick 後に確定するので遅延
+        // 職業変更後にリロードが確定するまで 1 tick 遅延
         server.scheduler.runTask(this, Runnable { e.entity.updateTitle() })
     }
 
-    /** 村人の頭上に職業名を出す */
+    private fun rescanAllVillagers() {
+        server.worlds
+            .flatMap { it.loadedChunks.asSequence() }
+            .flatMap { it.entities.asSequence() }
+            .filterIsInstance<Villager>()
+            .forEach { it.updateTitle() }
+    }
+
     private fun Villager.updateTitle() {
-        val comp = PROFESSION_NAMES[profession]
+        val text = PROFESSION_NAMES[profession]
             ?: Component.text("未知", NamedTextColor.GRAY)
-        customName(comp)
-        isCustomNameVisible = true            // 常時ネームタグ表示:contentReference[oaicite:4]{index=4}
+        customName(text)
+        isCustomNameVisible = true
     }
 
     companion object {
-        private val PROFESSION_NAMES = mapOf(
+        val PROFESSION_NAMES = mapOf(
             Villager.Profession.NONE      to Component.text("ニート", NamedTextColor.GRAY),
             Villager.Profession.NITWIT    to Component.text("ニート", NamedTextColor.GRAY),
             Villager.Profession.LIBRARIAN to Component.text("司書", NamedTextColor.AQUA),
@@ -54,6 +80,6 @@ class VillagerTitlesPlugin : JavaPlugin(), Listener {
             Villager.Profession.WEAPONSMITH to Component.text("武器鍛冶", NamedTextColor.DARK_RED),
             Villager.Profession.SHEPHERD  to Component.text("羊飼い", NamedTextColor.WHITE),
             Villager.Profession.FISHERMAN to Component.text("漁師", NamedTextColor.AQUA)
-        )                                   // 職業一覧は Spigot Javadoc を参照:contentReference[oaicite:5]{index=5}
+        )
     }
 }
